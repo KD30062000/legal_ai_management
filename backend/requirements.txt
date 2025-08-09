@@ -1,3 +1,74 @@
-fastapi
-uvicorn
-python-multipart
+# fastapi
+# uvicorn
+# python-multipart
+# boto3
+# python-dotenv
+# # Existing dependencies
+# fastapi==0.104.1
+# uvicorn==0.24.0
+# python-dotenv==1.0.0
+# boto3==1.34.0
+# python-multipart==0.0.6
+
+# # Document processing
+# pypdf2==3.0.1
+# python-docx==1.1.0
+# langchain==0.1.0
+# langchain-community==0.0.10
+# langchain-openai==0.0.2
+
+# # Vector database and embeddings
+# chromadb==0.4.18
+# sentence-transformers==2.2.2
+
+# # Text processing
+# tiktoken==0.5.2
+# unstructured==0.11.6
+
+# # Database
+# sqlalchemy==2.0.23
+# alembic==1.13.1
+# psycopg2-binary==2.9.9
+
+# # Additional utilities
+# pydantic==2.5.0
+# httpx==0.25.2
+
+# Existing dependencies
+fastapi>=0.110.0,<1
+uvicorn==0.24.0
+python-dotenv==1.0.0
+boto3==1.34.0
+python-multipart==0.0.6
+
+# Document processing
+pypdf2==3.0.1
+python-docx==1.1.0
+langchain==0.1.0
+langchain-community==0.0.10
+langchain-openai==0.0.2
+
+# Vector database and embeddings - FIXED VERSIONS
+chromadb==0.4.18
+sentence-transformers==2.3.1
+huggingface_hub==0.19.4
+
+# Text processing
+tiktoken==0.5.2
+unstructured==0.11.6
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.1
+psycopg2-binary==2.9.9
+
+# Additional utilities
+pydantic==2.5.0
+httpx==0.25.2
+
+# Google Gemini SDK
+google-generativeai>=0.7.0
+
+# Queue
+rq>=1.15.1
+redis>=5.0.0

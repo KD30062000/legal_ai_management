@@ -1,9 +1,72 @@
-version: "3.9"
-
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: legal_doc_ai
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d legal_doc_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
   backend:
     build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/legal_doc_ai
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PROCESS_ON_POST=true
+      - S3_UPLOAD_WAIT_SECONDS=600
+      - CHROMA_PERSIST_DIR=/data/chroma_db
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - chroma_data:/data/chroma_db
+    env_file:
+      - .env
+
+  worker:
+    build: ./backend
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/legal_doc_ai
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_UPLOAD_WAIT_SECONDS=600
+      - CHROMA_PERSIST_DIR=/data/chroma_db
+    env_file:
+      - .env
+    command: ["rq", "worker", "-u", "redis://redis:6379", "default"]
+    volumes:
+      - chroma_data:/data/chroma_db
+
+volumes:
+  postgres_data:
+  chroma_data:

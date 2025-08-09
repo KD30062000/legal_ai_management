@@ -1,0 +1,50 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.ruff_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+*.log
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Data / DB / Vector store
+*.sqlite3
+backend/chroma_db/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# If a frontend is added later
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
