@@ -1,192 +1,3 @@
-# from fastapi import APIRouter, Depends, HTTPException
-# from sqlalchemy.orm import Session
-# from pydantic import BaseModel
-# from typing import List, Optional
-# from app.models.database import (
-#     get_db, Company, ChatSession, ChatMessage, 
-#     Document as DBDocument
-# )
-# from app.services.vector_store import VectorStore
-# from app.services.llm_service import LLMService
-# import json
-
-# router = APIRouter()
-# vector_store = VectorStore()
-# llm_service = LLMService()
-
-# class ChatRequest(BaseModel):
-#     company_name: str
-#     message: str
-#     session_id: Optional[int] = None
-#     session_name: Optional[str] = None
-
-# class ChatResponse(BaseModel):
-#     session_id: int
-#     response: str
-#     context_documents: List[dict]
-
-# @router.post("/chat", response_model=ChatResponse)
-# async def chat_with_documents(
-#     request: ChatRequest,
-#     db: Session = Depends(get_db)
-# ):
-#     """Chat with RAG using company documents"""
-    
-#     # Get or create company
-#     company = db.query(Company).filter(Company.name == request.company_name).first()
-#     if not company:
-#         raise HTTPException(status_code=404, detail="Company not found")
-    
-#     # Get or create chat session
-#     if request.session_id:
-#         session = db.query(ChatSession).filter(
-#             ChatSession.id == request.session_id,
-#             ChatSession.company_id == company.id
-#         ).first()
-#         if not session:
-#             raise HTTPException(status_code=404, detail="Chat session not found")
-#     else:
-#         session = ChatSession(
-#             company_id=company.id,
-#             session_name=request.session_name or f"Chat {len(company.chat_sessions) + 1}"
-#         )
-#         db.add(session)
-#         db.commit()
-#         db.refresh(session)
-    
-#     # Search for relevant documents
-#     search_results = await vector_store.similarity_search(
-#         query=request.message,
-#         k=5,
-#         company_id=company.id
-#     )
-    
-#     # Get recent chat history
-#     recent_messages = db.query(ChatMessage).filter(
-#         ChatMessage.session_id == session.id
-#     ).order_by(ChatMessage.timestamp.desc()).limit(10).all()
-    
-#     chat_history = [
-#         {"role": msg.role, "content": msg.content}
-#         for msg in reversed(recent_messages)
-#     ]
-    
-#     # Generate response using RAG
-#     response = await llm_service.generate_rag_response(
-#         query=request.message,
-#         context_documents=search_results,
-#         chat_history=chat_history
-#     )
-    
-#     # Store user message
-#     user_message = ChatMessage(
-#         session_id=session.id,
-#         role="user",
-#         content=request.message,
-#         context_documents=[doc['metadata'].get('document_id') for doc in search_results]
-#     )
-#     db.add(user_message)
-    
-#     # Store assistant response
-#     assistant_message = ChatMessage(
-#         session_id=session.id,
-#         role="assistant",
-#         content=response,
-#         context_documents=[doc['metadata'].get('document_id') for doc in search_results]
-#     )
-#     db.add(assistant_message)
-    
-#     db.commit()
-    
-#     return ChatResponse(
-#         session_id=session.id,
-#         response=response,
-#         context_documents=[
-#             {
-#                 "filename": doc['metadata'].get('filename'),
-#                 "document_id": doc['metadata'].get('document_id'),
-#                 "score": doc['score']
-#             }
-#             for doc in search_results
-#         ]
-#     )
-
-# @router.get("/chat/sessions/{company_name}")
-# async def get_chat_sessions(
-#     company_name: str,
-#     db: Session = Depends(get_db)
-# ):
-#     """Get all chat sessions for a company"""
-#     company = db.query(Company).filter(Company.name == company_name).first()
-#     if not company:
-#         raise HTTPException(status_code=404, detail="Company not found")
-    
-#     sessions = db.query(ChatSession).filter(
-#         ChatSession.company_id == company.id
-#     ).order_by(ChatSession.updated_at.desc()).all()
-    
-#     return {
-#         "sessions": [
-#             {
-#                 "id": session.id,
-#                 "name": session.session_name,
-#                 "created_at": session.created_at,
-#                 "updated_at": session.updated_at,
-#                 "message_count": len(session.messages)
-#             }
-#             for session in sessions
-#         ]
-#     }
-
-# @router.get("/chat/sessions/{session_id}/messages")
-# async def get_session_messages(
-#     session_id: int,
-#     db: Session = Depends(get_db)
-# ):
-#     """Get all messages in a chat session"""
-#     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-#     if not session:
-#         raise HTTPException(status_code=404, detail="Session not found")
-    
-#     messages = db.query(ChatMessage).filter(
-#         ChatMessage.session_id == session_id
-#     ).order_by(ChatMessage.timestamp.asc()).all()
-    
-#     return {
-#         "session_id": session_id,
-#         "session_name": session.session_name,
-#         "messages": [
-#             {
-#                 "id": msg.id,
-#                 "role": msg.role,
-#                 "content": msg.content,
-#                 "timestamp": msg.timestamp,
-#                 "context_documents": msg.context_documents
-#             }
-#             for msg in messages
-#         ]
-#     }
-
-# @router.delete("/chat/sessions/{session_id}")
-# async def delete_session(
-#     session_id: int,
-#     db: Session = Depends(get_db)
-# ):
-#     """Delete a chat session and all its messages"""
-#     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-#     if not session:
-#         raise HTTPException(status_code=404, detail="Session not found")
-    
-#     # Delete all messages first
-#     db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
-    
-#     # Delete session
-#     db.delete(session)
-#     db.commit()
-    
-#     return {"message": "Session deleted successfully"}
-
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -202,6 +13,7 @@ from app.services.vector_store import VectorStore
 from app.services.llm_service import LLMService
 import json
 import time
+from itertools import islice
 
 router = APIRouter()
 vector_store = VectorStore()
@@ -242,12 +54,37 @@ async def chat_with_documents(
         db.commit()
         db.refresh(session)
     
-    # Search for relevant documents
+    # Search for relevant documents with optional restriction to specific document IDs
     search_results = await vector_store.similarity_search(
         query=request.message,
         k=5,
-        company_id=company.id
+        company_id=company.id,
+        document_ids=request.specific_documents
     )
+
+    # Fallback: if a specific document was requested but retrieval returned nothing,
+    # load chunks for that document directly to ensure some context is provided.
+    if (not search_results) and request.specific_documents:
+        aggregated = []
+        # Limit total chunks to avoid extremely long prompts
+        max_total_chunks = 6
+        for doc_id in request.specific_documents:
+            chunks = await vector_store.get_document_chunks(doc_id)
+            for chunk in islice(chunks, 0, max_total_chunks - len(aggregated)):
+                # Ensure same shape used by similarity_search
+                aggregated.append({
+                    'content': chunk['content'],
+                    'metadata': chunk['metadata'],
+                    'score': 1.0,
+                    'id': chunk['id']
+                })
+            if len(aggregated) >= max_total_chunks:
+                break
+        search_results = aggregated
+
+    # Decide which document IDs to associate with this exchange for history filtering
+    result_doc_ids = [doc['metadata'].get('document_id') for doc in search_results]
+    effective_doc_ids = request.specific_documents or result_doc_ids
     
     # Get recent chat history
     recent_messages = db.query(ChatMessage).filter(
@@ -271,7 +108,7 @@ async def chat_with_documents(
         session_id=session.id,
         role="user",
         content=request.message,
-        context_documents=[doc['metadata'].get('document_id') for doc in search_results]
+        context_documents=effective_doc_ids
     )
     db.add(user_message)
     
@@ -280,7 +117,7 @@ async def chat_with_documents(
         session_id=session.id,
         role="assistant",
         content=response,
-        context_documents=[doc['metadata'].get('document_id') for doc in search_results]
+        context_documents=effective_doc_ids
     )
     db.add(assistant_message)
     
@@ -333,7 +170,8 @@ async def quick_prompt(
         company_name=request.company_name,
         message=prompt_templates[request.prompt_type],
         session_id=request.session_id,
-        session_name=f"Quick Analysis - {request.prompt_type.title()}"
+        session_name=f"Quick Analysis - {request.prompt_type.title()}",
+        specific_documents=request.specific_documents
     )
     
     return await chat_with_documents(chat_request, db)

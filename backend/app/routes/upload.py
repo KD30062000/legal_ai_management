@@ -33,56 +33,56 @@ PROCESS_ON_POST = os.getenv("PROCESS_ON_POST", "true").lower() == "true"
 class UploadCompleteRequest(BaseModel):
     document_id: int
 
-@router.post("/upload/")
-async def upload_document(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    company_name: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    """Upload document and start processing"""
+# @router.post("/upload/")
+# async def upload_document(
+#     background_tasks: BackgroundTasks,
+#     file: UploadFile = File(...),
+#     company_name: str = Form(...),
+#     db: Session = Depends(get_db)
+# ):
+#     """Upload document and start processing"""
     
-    # Get or create company
-    normalized_name = (company_name or "").strip()
-    company = (
-        db.query(Company)
-        .filter(func.lower(Company.name) == func.lower(normalized_name))
-        .first()
-    )
-    if not company:
-        company = Company(name=normalized_name)
-        db.add(company)
-        db.commit()
-        db.refresh(company)
+#     # Get or create company
+#     normalized_name = (company_name or "").strip()
+#     company = (
+#         db.query(Company)
+#         .filter(func.lower(Company.name) == func.lower(normalized_name))
+#         .first()
+#     )
+#     if not company:
+#         company = Company(name=normalized_name)
+#         db.add(company)
+#         db.commit()
+#         db.refresh(company)
     
-    # Generate presigned URL for upload
-    upload_info = generate_presigned_url(file.filename, file.content_type)
+#     # Generate presigned URL for upload
+#     upload_info = generate_presigned_url(file.filename, file.content_type)
     
-    # Create document record
-    document = DBDocument(
-        filename=file.filename,
-        s3_key=upload_info["s3_key"],
-        content_type=file.content_type,
-        file_size=0,  # Will be updated after upload
-        company_id=company.id,
-        processed="pending"
-    )
-    db.add(document)
-    db.commit()
-    db.refresh(document)
+#     # Create document record
+#     document = DBDocument(
+#         filename=file.filename,
+#         s3_key=upload_info["s3_key"],
+#         content_type=file.content_type,
+#         file_size=0,  # Will be updated after upload
+#         company_id=company.id,
+#         processed="pending"
+#     )
+#     db.add(document)
+#     db.commit()
+#     db.refresh(document)
     
-    # Add background task to process document after upload (optional)
-    if PROCESS_ON_POST:
-        # Enqueue to Redis queue for processing
-        q = get_queue()
-        q.enqueue(process_document_job, document.id)
+#     # Add background task to process document after upload (optional)
+#     if PROCESS_ON_POST:
+#         # Enqueue to Redis queue for processing
+#         q = get_queue()
+#         q.enqueue(process_document_job, document.id)
     
-    return {
-        "document_id": document.id,
-        "upload_url": upload_info["upload_url"],
-        "s3_key": upload_info["s3_key"],
-        "message": "Document uploaded successfully. Processing will begin shortly."
-    }
+#     return {
+#         "document_id": document.id,
+#         "upload_url": upload_info["upload_url"],
+#         "s3_key": upload_info["s3_key"],
+#         "message": "Document uploaded successfully. Processing will begin shortly."
+#     }
 
 
 @router.post("/upload/direct")
@@ -164,32 +164,32 @@ async def process_document_after_upload(document_id: int, s3_key: str):
         print(f"Error processing document {document_id}: {str(e)}")
 
 
-@router.post("/upload/complete")
-async def upload_complete(
-    request: UploadCompleteRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Trigger processing after the client successfully PUT the file to S3.
+# @router.post("/upload/complete")
+# async def upload_complete(
+#     request: UploadCompleteRequest,
+#     background_tasks: BackgroundTasks,
+#     db: Session = Depends(get_db)
+# ):
+#     """Trigger processing after the client successfully PUT the file to S3.
 
-    Call this endpoint immediately after the S3 upload responds 200.
-    """
-    document = db.query(DBDocument).filter(DBDocument.id == request.document_id).first()
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+#     Call this endpoint immediately after the S3 upload responds 200.
+#     """
+#     document = db.query(DBDocument).filter(DBDocument.id == request.document_id).first()
+#     if not document:
+#         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Verify the object exists in S3 before starting
-    try:
-        document_processor.s3_client.head_object(
-            Bucket=os.getenv("S3_BUCKET_NAME"),
-            Key=document.s3_key,
-        )
-    except Exception:
-        raise HTTPException(status_code=400, detail="S3 object not found yet. Ensure the PUT succeeded.")
+#     # Verify the object exists in S3 before starting
+#     try:
+#         document_processor.s3_client.head_object(
+#             Bucket=os.getenv("S3_BUCKET_NAME"),
+#             Key=document.s3_key,
+#         )
+#     except Exception:
+#         raise HTTPException(status_code=400, detail="S3 object not found yet. Ensure the PUT succeeded.")
 
-    q = get_queue()
-    q.enqueue(process_document_job, document.id)
-    return {"status": "queued", "document_id": document.id}
+#     q = get_queue()
+#     q.enqueue(process_document_job, document.id)
+#     return {"status": "queued", "document_id": document.id}
 
 @router.get("/documents/{company_name}")
 async def get_company_documents(

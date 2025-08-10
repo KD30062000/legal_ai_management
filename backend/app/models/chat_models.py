@@ -7,6 +7,8 @@ class ChatRequest(BaseModel):
     message: str
     session_id: Optional[int] = None
     session_name: Optional[str] = None
+    # Optional list of document IDs to restrict retrieval to
+    specific_documents: Optional[List[int]] = None
 
 class ChatResponse(BaseModel):
     session_id: int

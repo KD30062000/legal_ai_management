@@ -54,32 +54,42 @@ class VectorStore:
         
         return ids
 
-    async def similarity_search(self, query: str, k: int = 5, company_id: int = None) -> List[Dict[str, Any]]:
+    async def similarity_search(self, query: str, k: int = 5, company_id: int = None, document_ids: List[int] = None) -> List[Dict[str, Any]]:
         """Search for similar documents"""
         # Generate query embedding
         query_embedding = self.embedding_model.encode([query]).tolist()[0]
         
-        # Try filtering by company both as int and as string to avoid type-mismatch issues
+        # Build where filter supporting optional company and document filters
+        def build_where(use_string_types: bool) -> Dict[str, Any]:
+            where: Dict[str, Any] = {}
+            if company_id is not None:
+                where["company_id"] = str(company_id) if use_string_types else company_id
+            if document_ids:
+                # Chroma supports $in operator via {"field": {"$in": [...]}}
+                converted_ids = [str(d) for d in document_ids] if use_string_types else document_ids
+                where["document_id"] = {"$in": converted_ids}
+            return where if where else None
+
+        # Try filtering by company and/or document both as int and as string to avoid type-mismatch issues
         query_results = []
-        if company_id is not None:
-            try:
-                res_int = self.collection.query(
-                    query_embeddings=[query_embedding],
-                    n_results=k,
-                    where={"company_id": company_id}
-                )
-                query_results.append(res_int)
-            except Exception:
-                pass
-            try:
-                res_str = self.collection.query(
-                    query_embeddings=[query_embedding],
-                    n_results=k,
-                    where={"company_id": str(company_id)}
-                )
-                query_results.append(res_str)
-            except Exception:
-                pass
+        try:
+            res_int = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=k,
+                where=build_where(use_string_types=False)
+            )
+            query_results.append(res_int)
+        except Exception:
+            pass
+        try:
+            res_str = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=k,
+                where=build_where(use_string_types=True)
+            )
+            query_results.append(res_str)
+        except Exception:
+            pass
         
         # Fallback: no where filter if nothing found
         if not query_results:
@@ -106,10 +116,14 @@ class VectorStore:
                         'score': 1 - results['distances'][0][i],
                         'id': item_id
                     }
-                    # If a company filter was requested, enforce it post-query
+                    # If filters were requested, enforce them post-query as well
                     if company_id is not None:
                         meta_company = item['metadata'].get('company_id')
                         if str(meta_company) != str(company_id):
+                            continue
+                    if document_ids:
+                        meta_doc_id = item['metadata'].get('document_id')
+                        if str(meta_doc_id) not in {str(i) for i in document_ids}:
                             continue
                     search_results.append(item)
         
